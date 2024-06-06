@@ -1,0 +1,120 @@
+/******************************************************
+*001、Load Category Images
+******************************************************/
+///01、Check out how many images
+// print(B2_2021_10,'B2_2021_10')//See how many images there are
+
+///02、Image selection (by duration)
+var B2_2021_10 =B2_2021_10.slice(0,4)
+var B3_2021_10 =B3_2021_10.slice(0,4)
+var B4_2021_10 =B4_2021_10.slice(0,4)
+var B5_2021_10 =B5_2021_10.slice(0,4)
+var B6_2021_10 =B6_2021_10.slice(0,4)
+var B7_2021_10 =B7_2021_10.slice(0,4)
+var B8_2021_10 =B8_2021_10.slice(0,4)
+var B11_2021_10 =B11_2021_10.slice(0,4)
+var B12_2021_10 =B12_2021_10.slice(0,4)
+var EVI2021_10 =EVI2021_10.slice(0,4)
+var GCVI2021_10 =GCVI2021_10.slice(0,4)
+var LSWI2021_10 =LSWI2021_10.slice(0,4)
+var NDVI2021_10 =NDVI2021_10.slice(0,4)
+var SAVI2021_10 =SAVI2021_10.slice(0,4)
+var REP2021_10 =REP2021_10.slice(0,4)
+
+///03、Definition of classified images and bands
+var class_img =
+B2_2021_10
+.addBands(B3_2021_10)
+.addBands(B4_2021_10)
+.addBands(B5_2021_10)
+.addBands(B6_2021_10)
+.addBands(B7_2021_10)
+.addBands(B8_2021_10)
+.addBands(B11_2021_10)
+.addBands(B12_2021_10)
+.addBands(SAVI2021_10)
+.addBands(LSWI2021_10)
+.addBands(GCVI2021_10)
+.addBands(NDVI2021_10)
+.addBands(EVI2021_10)
+.addBands(REP2021_10)
+var class_bands = class_img.bandNames()
+var bands = class_bands
+// print(bands,'bands')
+
+/******************************************************
+*002、Image Classification
+******************************************************/
+///01、Synthetic sample sets of wheat and non-wheat will be synthesised
+var newfc = wheat.merge(nonwheat);
+
+///02、Add a random column and split the sample points into a training set and a validation set.70% training set, 30% validation set
+var withRandom = newfc.randomColumn('random');
+var training_subset = withRandom.filter(ee.Filter.lt('random', 0.7));//training sample
+print(training_subset,'training_subset')
+var validation_subset = withRandom.filter(ee.Filter.gte('random', 0.7));//verification sample
+print(validation_subset,'validation_subset')
+
+///03、Training on samples
+var training = class_img.select(bands).sampleRegions({
+  collection: training_subset,
+  properties: ['landcover'],
+  scale: 10,
+  tileScale: 16
+});
+
+///04、Set the number of decision trees to 100
+var classifier = ee.Classifier.smileRandomForest(100).train({
+  features: training,
+  classProperty: 'landcover',
+  inputProperties: bands
+});
+
+///05、crop classification
+var classified = class_img.select(bands).clip(roi).classify(classifier);
+var classified = classified.clip(roi_gengdi);//Cutting to fit the ploughing mask
+
+
+/******************************************************
+*003、Accuracy Verification
+******************************************************/
+
+///01、Validation Sample Training
+var test = classified.sampleRegions({
+  collection: validation_subset,
+  properties: ['landcover'],
+  scale: 10,
+  tileScale: 16
+});
+
+///02、Make a confusion matrix and print it out
+var confusionMatrix = test.errorMatrix('landcover', 'classification');
+
+////03、Accuracy calculations (kappa factor, total accuracy, user accuracy, production accuracy)
+var kappa = confusionMatrix.kappa()//Kappa
+print('RF kappa:',kappa)
+var accuracy = confusionMatrix.accuracy()//OA
+print('RF Over accuracy:',accuracy)
+var consumersaccuracy = confusionMatrix.consumersAccuracy()//UA
+print('RF consumersaccuracy:',consumersaccuracy)
+var producersAccuracy = confusionMatrix.producersAccuracy()//PA
+print('RF producersAccuracy:',producersAccuracy)
+var producersfscore = confusionMatrix.fscore()//F-score
+print('RF fscore:',producersfscore)
+
+
+https://code.earthengine.google.com/3d247ccf5dbe93802f2b63dcfbefa47c
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
